@@ -111,6 +111,29 @@ def _fallback_segments(transcript: TranscriptResult) -> list[TranscriptSegment]:
     return segments
 
 
+def build_visual_only_transcript(filename: str, duration: float | None, scene_changes: list[float]) -> TranscriptResult:
+    media_duration = max(10.0, float(duration or 30.0))
+    label = Path(filename).stem.replace("_", " ").replace("-", " ").strip() or "uploaded video"
+    anchors = [scene for scene in scene_changes if 0 <= scene <= media_duration]
+    if not anchors:
+        anchors = [media_duration * 0.25, media_duration * 0.5, media_duration * 0.75]
+
+    segments: list[TranscriptSegment] = []
+    for index, anchor in enumerate(anchors[:8], start=1):
+        start = max(0.0, anchor - 4.0)
+        end = min(media_duration, max(start + 4.0, anchor + 4.0))
+        segments.append(
+            TranscriptSegment(
+                start=start,
+                end=end,
+                text=f"{label} visual highlight candidate {index}. Strong motion or composition change around {anchor:.1f} seconds.",
+            )
+        )
+
+    text = " ".join(segment.text for segment in segments)
+    return TranscriptResult(text=text, segments=segments, provider="visual-only", model=None)
+
+
 def select_highlights(
     transcript: TranscriptResult,
     clip_count: int,
@@ -227,20 +250,28 @@ async def process_reel_upload(
     duration: float | None = None
     scene_changes: list[float] = []
     media_for_transcript = job_source
+    has_audio = True
     suffix = job_source.suffix.lower()
 
     if suffix in VIDEO_EXTENSIONS and ffmpeg_ready:
         try:
             duration = runner.probe_duration(job_source)
             scene_changes = runner.detect_scene_changes(job_source)
-            media_for_transcript = runner.extract_audio(job_source, job_dir / "audio.wav")
+            has_audio = runner.has_audio_stream(job_source)
+            if has_audio:
+                media_for_transcript = runner.extract_audio(job_source, job_dir / "audio.wav")
+            else:
+                media_for_transcript = None
         except (FFmpegError, TimeoutError) as error:
             warnings.append(f"FFmpeg preprocessing failed: {error}")
             media_for_transcript = job_source
     elif suffix in VIDEO_EXTENSIONS:
         warnings.append("FFmpeg is unavailable; returning an edit decision list without rendered MP4 clips.")
 
-    transcript = transcribe_media(media_for_transcript, kind="reel", prefer_segments=True, force_demo=demo_mode)
+    if media_for_transcript is None:
+        transcript = build_visual_only_transcript(upload.filename or job_source.name, duration, scene_changes)
+    else:
+        transcript = transcribe_media(media_for_transcript, kind="reel", prefer_segments=True, force_demo=demo_mode)
     if duration is None and transcript.segments:
         duration = max(segment.end for segment in transcript.segments if not math.isnan(segment.end))
 
@@ -292,4 +323,3 @@ def job_file(job_id: str, filename: str) -> Path:
     if not job_id.startswith("reel-") or "/" in filename or "\\" in filename or filename.startswith("."):
         raise FileNotFoundError(filename)
     return service_path("reel", "jobs", job_id) / filename
-

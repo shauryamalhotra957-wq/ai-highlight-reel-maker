@@ -60,6 +60,10 @@ class FFmpegRunner:
         result = self.run(["-hide_banner", "-i", str(source)], timeout=30, check=False)
         return parse_duration(result.stderr)
 
+    def has_audio_stream(self, source: Path) -> bool:
+        result = self.run(["-hide_banner", "-i", str(source)], timeout=30, check=False)
+        return "Audio:" in result.stderr
+
     def extract_audio(self, source: Path, target: Path) -> Path:
         target.parent.mkdir(parents=True, exist_ok=True)
         self.run(
@@ -173,4 +177,3 @@ def write_srt(path: Path, segments: list[TranscriptSegment], clip_start: float, 
         )
     path.write_text("\n\n".join(blocks) + "\n", encoding="utf-8")
     return path
-

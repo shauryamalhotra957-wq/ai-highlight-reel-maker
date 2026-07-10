@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from ai_media_lab.common.ffmpeg_service import FFmpegRunner
 from ai_media_lab.reel.app import app
 
 
@@ -41,3 +42,46 @@ def test_reel_upload_returns_planned_clips_and_edl(tmp_path, monkeypatch):
     edl = client.get(payload["edit_decision_list_url"])
     assert edl.status_code == 200
     assert "Highlight Reel EDL" in edl.text
+
+
+def test_reel_upload_handles_video_without_audio(tmp_path, monkeypatch):
+    monkeypatch.setenv("AI_MEDIA_DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setenv("AI_MEDIA_FORCE_DEMO", "1")
+    video_path = tmp_path / "silent.mp4"
+    runner = FFmpegRunner()
+    runner.run(
+        [
+            "-hide_banner",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            "testsrc=duration=4:size=320x180:rate=10",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            str(video_path),
+        ],
+        timeout=60,
+    )
+    client = TestClient(app)
+
+    with video_path.open("rb") as handle:
+        response = client.post(
+            "/api/highlights",
+            files={"file": ("silent.mp4", handle, "video/mp4")},
+            data={
+                "clip_count": "2",
+                "platform": "YouTube Shorts",
+                "captions": "true",
+                "demo_mode": "true",
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "rendered"
+    assert payload["clips"][0]["video_url"]
+    assert not any("FFmpeg preprocessing failed" in warning for warning in payload["warnings"])
+    assert payload["transcript"]["provider"] == "visual-only"
