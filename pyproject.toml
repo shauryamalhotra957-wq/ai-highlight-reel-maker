@@ -1,0 +1,26 @@
+[project]
+name = "ai-highlight-reel-maker"
+version = "0.1.0"
+description = "FastAPI prototype that finds highlight clips, captions, titles, and edit decision lists from long-form footage."
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.30.0",
+  "python-multipart>=0.0.9",
+  "python-dotenv>=1.0.1",
+  "openai>=1.99.0",
+  "pydantic>=2.7.0",
+  "imageio-ffmpeg>=0.5.1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.27.0",
+  "pytest>=8.2.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"
+

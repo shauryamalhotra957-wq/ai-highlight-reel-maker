@@ -1,0 +1,271 @@
+:root {
+  color-scheme: light;
+  --ink: #151a23;
+  --muted: #65758b;
+  --line: #d8e0ea;
+  --paper: #f7faf9;
+  --panel: #ffffff;
+  --green: #15803d;
+  --blue: #1d4ed8;
+  --pink: #be185d;
+  --yellow: #a16207;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.shell {
+  width: min(1200px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 28px 0 48px;
+}
+
+.tool {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 22px;
+}
+
+.result {
+  margin-top: 24px;
+}
+
+.mast,
+.result-head,
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.eyebrow {
+  margin: 0 0 5px;
+  color: var(--pink);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+h1 {
+  font-size: 56px;
+  line-height: 1;
+}
+
+h2 {
+  font-size: 28px;
+}
+
+.status {
+  min-width: 96px;
+  text-align: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.upload {
+  margin-top: 22px;
+}
+
+.drop {
+  display: grid;
+  place-items: center;
+  min-height: 152px;
+  border: 2px dashed #9fb3c8;
+  border-radius: 8px;
+  background: #f1f5f9;
+  cursor: pointer;
+}
+
+.drop input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+}
+
+.drop-title {
+  display: block;
+  font-size: 21px;
+  font-weight: 800;
+}
+
+.drop-meta {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.timeline {
+  position: relative;
+  overflow: hidden;
+  height: 92px;
+  margin: 14px 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.timeline span {
+  position: absolute;
+  bottom: 0;
+  width: 10px;
+  min-height: 12px;
+  background: var(--blue);
+}
+
+.timeline span:nth-child(5n) {
+  background: var(--pink);
+}
+
+.timeline span:nth-child(7n) {
+  background: var(--green);
+}
+
+.controls label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.controls input[type="number"],
+.controls select {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 11px 12px;
+  color: var(--ink);
+  font: inherit;
+  background: #ffffff;
+}
+
+.toggle {
+  display: flex !important;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 9px !important;
+  color: var(--ink) !important;
+}
+
+button,
+.button {
+  appearance: none;
+  border: 1px solid var(--blue);
+  border-radius: 6px;
+  background: var(--blue);
+  color: #ffffff;
+  padding: 11px 16px;
+  font: inherit;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.button.secondary {
+  background: #ffffff;
+  color: var(--blue);
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.warnings {
+  margin-top: 14px;
+  border-left: 4px solid var(--yellow);
+  padding: 10px 12px;
+  background: #fffbeb;
+  color: #713f12;
+}
+
+.clips {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.clip {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  min-width: 0;
+}
+
+.clip h3 {
+  font-size: 18px;
+  margin-bottom: 8px;
+}
+
+.meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 13px;
+  margin-bottom: 11px;
+}
+
+.caption {
+  color: var(--ink);
+  margin: 0 0 10px;
+}
+
+.tags {
+  color: var(--pink);
+  font-weight: 800;
+  margin: 0 0 12px;
+}
+
+.clip-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.hidden {
+  display: none;
+}
+
+@media (max-width: 800px) {
+  .mast,
+  .result-head,
+  .controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .clips {
+    grid-template-columns: 1fr;
+  }
+
+  h1 {
+    font-size: 38px;
+  }
+}

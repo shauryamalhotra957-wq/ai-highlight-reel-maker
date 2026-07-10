@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI Highlight Reel Maker</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="tool">
+        <div class="mast">
+          <div>
+            <p class="eyebrow">Project 10</p>
+            <h1>AI Highlight Reel Maker</h1>
+          </div>
+          <div class="status" id="health">Checking</div>
+        </div>
+
+        <form id="uploadForm" class="upload" autocomplete="off">
+          <label class="drop">
+            <input id="file" name="file" type="file" accept="video/*,audio/*,.txt,.md,.srt,.vtt" required />
+            <span class="drop-title" id="fileLabel">Choose long-form footage</span>
+            <span class="drop-meta">Video, audio, or transcript</span>
+          </label>
+          <div class="timeline" id="timeline"></div>
+          <div class="controls">
+            <label>
+              <span>Clips</span>
+              <input id="clipCount" name="clip_count" type="number" min="1" max="12" value="5" />
+            </label>
+            <label>
+              <span>Platform</span>
+              <select id="platform" name="platform">
+                <option>YouTube Shorts</option>
+                <option>TikTok</option>
+                <option>Instagram Reels</option>
+                <option>Sports</option>
+                <option>Podcast</option>
+              </select>
+            </label>
+            <label class="toggle">
+              <input id="captions" name="captions" type="checkbox" checked />
+              <span>Captions</span>
+            </label>
+            <label class="toggle">
+              <input id="demoMode" name="demo_mode" type="checkbox" />
+              <span>Demo mode</span>
+            </label>
+            <button type="submit" id="submitBtn">Find Highlights</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="result" class="result hidden">
+        <div class="result-head">
+          <div>
+            <p class="eyebrow">Edit Pack</p>
+            <h2 id="status">Highlights</h2>
+          </div>
+          <a id="edlLink" class="button secondary" href="#">EDL</a>
+        </div>
+        <div id="warnings" class="warnings hidden"></div>
+        <div id="clips" class="clips"></div>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
+
