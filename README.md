@@ -6,6 +6,15 @@ Upload long-form sports, podcast, or vlog footage and automatically find the bes
 
 Tech stack: Python, FastAPI, OpenAI Whisper-compatible transcription API, FFmpeg.
 
+## Project Snapshot
+
+| Area | Detail |
+| --- | --- |
+| Experience | Highlight planning and reel-production assistant |
+| Core system | FFmpeg preprocessing, transcript scoring, clip selection, captions, EDL export |
+| Design signal | Clear creator workflow from source media to shareable clip plan |
+| Quality signal | Pytest CI on Python 3.11 and 3.12 |
+
 ## Run
 
 ```powershell
