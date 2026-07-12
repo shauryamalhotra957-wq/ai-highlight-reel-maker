@@ -1,5 +1,7 @@
 # AI Highlight Reel Maker
 
+[![tests](https://github.com/shauryamalhotra957-wq/ai-highlight-reel-maker/actions/workflows/tests.yml/badge.svg)](https://github.com/shauryamalhotra957-wq/ai-highlight-reel-maker/actions/workflows/tests.yml)
+
 Upload long-form sports, podcast, or vlog footage and automatically find the best clips, captions, and titles.
 
 Tech stack: Python, FastAPI, OpenAI Whisper-compatible transcription API, FFmpeg.
@@ -54,6 +56,8 @@ OPENAI_TRANSCRIBE_MODEL=whisper-1
 ```powershell
 .\.venv\Scripts\python.exe -m pytest
 ```
+
+GitHub Actions runs the same pytest suite on Python 3.11 and 3.12 for pushes and pull requests.
 
 ## Samples
 
