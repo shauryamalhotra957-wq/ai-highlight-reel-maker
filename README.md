@@ -79,3 +79,7 @@ Regenerate the sample video:
 .\.venv\Scripts\python.exe .\scripts\make_sample_assets.py
 ```
 
+## Experience Design
+
+The editing workspace follows the [Highlight Reel design system](design-system/ai-highlight-reel-maker/MASTER.md), with cinematic contrast, clear job states, accessible upload controls, responsive surfaces, and reduced-motion support.
+
