@@ -153,19 +153,27 @@ def format_timestamp(seconds: float) -> str:
 
 
 def write_srt(path: Path, segments: list[TranscriptSegment], clip_start: float, clip_end: float, fallback_text: str) -> Path:
+    clip_duration = clip_end - clip_start
+    if clip_duration <= 0:
+        raise ValueError("clip_end must be greater than clip_start")
+
     path.parent.mkdir(parents=True, exist_ok=True)
     matching = [
         segment
         for segment in segments
-        if segment.end >= clip_start and segment.start <= clip_end and segment.text.strip()
+        if segment.end > clip_start and segment.start < clip_end and segment.text.strip()
     ]
     if not matching:
         matching = [TranscriptSegment(start=clip_start, end=clip_end, text=fallback_text)]
 
     blocks: list[str] = []
-    for index, segment in enumerate(matching, start=1):
-        start = max(0.0, segment.start - clip_start)
-        end = max(start + 1.0, min(clip_end - clip_start, segment.end - clip_start))
+    for segment in matching:
+        start = max(0.0, min(clip_duration, segment.start - clip_start))
+        end = max(0.0, min(clip_duration, segment.end - clip_start))
+        end = min(clip_duration, max(start + 1.0, end))
+        if end <= start:
+            continue
+        index = len(blocks) + 1
         blocks.append(
             "\n".join(
                 [
