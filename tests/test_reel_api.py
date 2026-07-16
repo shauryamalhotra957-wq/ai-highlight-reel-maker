@@ -85,3 +85,17 @@ def test_reel_upload_handles_video_without_audio(tmp_path, monkeypatch):
     assert payload["clips"][0]["video_url"]
     assert not any("FFmpeg preprocessing failed" in warning for warning in payload["warnings"])
     assert payload["transcript"]["provider"] == "visual-only"
+
+
+def test_reel_upload_rejects_out_of_range_clip_counts(tmp_path, monkeypatch):
+    monkeypatch.setenv("AI_MEDIA_DATA_DIR", str(tmp_path))
+    client = TestClient(app)
+
+    for clip_count in (0, 13):
+        response = client.post(
+            "/api/highlights",
+            files={"file": ("show.txt", b"A highlight-worthy moment.", "text/plain")},
+            data={"clip_count": str(clip_count), "demo_mode": "true"},
+        )
+
+        assert response.status_code == 422
