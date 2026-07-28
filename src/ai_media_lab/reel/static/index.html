@@ -15,16 +15,23 @@
             <p class="eyebrow">Project 10</p>
             <h1>AI Highlight Reel Maker</h1>
           </div>
-          <div class="status" id="health">Checking</div>
+          <div class="status" id="health" role="status" aria-live="polite">Checking</div>
         </div>
 
         <form id="uploadForm" class="upload" autocomplete="off">
-          <label class="drop">
-            <input id="file" name="file" type="file" accept="video/*,audio/*,.txt,.md,.srt,.vtt" required />
+          <label class="drop" id="dropZone">
+            <input
+              id="file"
+              name="file"
+              type="file"
+              accept="video/*,audio/*,.txt,.md,.srt,.vtt"
+              aria-describedby="fileRequirements fileMeta"
+            />
             <span class="drop-title" id="fileLabel">Choose long-form footage</span>
-            <span class="drop-meta">Video, audio, or transcript</span>
+            <span class="drop-meta" id="fileRequirements">Drop a video, audio file, or transcript here</span>
+            <span class="file-meta" id="fileMeta" aria-live="polite">No file selected</span>
           </label>
-          <div class="timeline" id="timeline"></div>
+          <div class="timeline" id="timeline" aria-hidden="true"></div>
           <div class="controls">
             <label>
               <span>Clips</span>
@@ -50,10 +57,14 @@
             </label>
             <button type="submit" id="submitBtn">Find Highlights</button>
           </div>
+          <p class="analysis-status" id="analysisStatus" role="status" aria-live="polite">
+            Ready to analyze your source locally or in demo mode.
+          </p>
+          <div class="form-error hidden" id="formError" role="alert"></div>
         </form>
       </section>
 
-      <section id="result" class="result hidden">
+      <section id="result" class="result hidden" tabindex="-1" aria-labelledby="status">
         <div class="result-head">
           <div>
             <p class="eyebrow">Edit Pack</p>
@@ -61,7 +72,7 @@
           </div>
           <a id="edlLink" class="button secondary" href="#">EDL</a>
         </div>
-        <div id="warnings" class="warnings hidden"></div>
+        <div id="warnings" class="warnings hidden" role="status"></div>
         <div id="clips" class="clips"></div>
       </section>
     </main>

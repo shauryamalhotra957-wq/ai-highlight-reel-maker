@@ -90,13 +90,17 @@ h2 {
 }
 
 .drop {
+  position: relative;
   display: grid;
   place-items: center;
+  align-content: center;
+  gap: 6px;
   min-height: 152px;
   border: 2px dashed #9fb3c8;
   border-radius: 8px;
   background: #f1f5f9;
   cursor: pointer;
+  transition: border-color 180ms ease, background-color 180ms ease, transform 180ms ease;
 }
 
 .drop input {
@@ -114,9 +118,23 @@ h2 {
 
 .drop-meta {
   display: block;
-  margin-top: 7px;
   color: var(--muted);
   font-size: 14px;
+}
+
+.file-meta {
+  display: block;
+  min-height: 1.25rem;
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.drop.is-dragging,
+.drop:has(input:focus-visible) {
+  border-color: var(--pink);
+  background: rgba(244, 114, 182, 0.08);
+  transform: translateY(-2px);
 }
 
 .timeline {
@@ -196,6 +214,33 @@ button:disabled {
   cursor: wait;
 }
 
+.analysis-status {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.form-error {
+  margin-top: 12px;
+  border: 1px solid rgba(244, 63, 94, 0.45);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #fecdd3;
+  background: rgba(159, 18, 57, 0.2);
+}
+
+.is-loading {
+  background-image: linear-gradient(100deg, var(--blue), var(--pink), var(--blue));
+  background-size: 220% 100%;
+  animation: loading-shimmer 1.25s linear infinite;
+}
+
+@keyframes loading-shimmer {
+  to {
+    background-position: -220% 0;
+  }
+}
+
 .warnings {
   margin-top: 14px;
   border-left: 4px solid var(--yellow);
@@ -267,5 +312,9 @@ button:disabled {
 
   h1 {
     font-size: 38px;
+  }
+
+  button[type="submit"] {
+    width: 100%;
   }
 }

@@ -2,8 +2,22 @@ const health = document.querySelector("#health");
 const form = document.querySelector("#uploadForm");
 const fileInput = document.querySelector("#file");
 const fileLabel = document.querySelector("#fileLabel");
+const fileMeta = document.querySelector("#fileMeta");
+const dropZone = document.querySelector("#dropZone");
 const submitBtn = document.querySelector("#submitBtn");
 const timeline = document.querySelector("#timeline");
+const analysisStatus = document.querySelector("#analysisStatus");
+const formError = document.querySelector("#formError");
+const resultPanel = document.querySelector("#result");
+const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const unitIndex = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  const value = bytes / 1024 ** unitIndex;
+  return `${value.toFixed(unitIndex === 0 || value >= 10 ? 0 : 1)} ${units[unitIndex]}`;
+}
 
 function drawTimeline(seed = 2) {
   timeline.innerHTML = "";
@@ -19,7 +33,39 @@ function drawTimeline(seed = 2) {
 
 function setLoading(isLoading) {
   submitBtn.disabled = isLoading;
-  submitBtn.textContent = isLoading ? "Finding" : "Find Highlights";
+  submitBtn.classList.toggle("is-loading", isLoading);
+  submitBtn.textContent = isLoading ? "Finding highlights…" : "Find Highlights";
+  if (isLoading) {
+    analysisStatus.textContent =
+      "Analyzing the source and building your edit pack. This can take a moment for long media.";
+  }
+}
+
+function showError(message = "") {
+  formError.textContent = message;
+  formError.classList.toggle("hidden", !message);
+}
+
+function describeFile(file) {
+  if (!file) {
+    fileLabel.textContent = "Choose long-form footage";
+    fileMeta.textContent = "No file selected";
+    return;
+  }
+  fileLabel.textContent = file.name;
+  const kind = file.type || "Transcript";
+  fileMeta.textContent = `${formatBytes(file.size)} · ${kind}`;
+  analysisStatus.textContent = "Source ready. Choose your clip settings, then find highlights.";
+  showError();
+  drawTimeline(file.size % 37);
+}
+
+function acceptDroppedFile(file) {
+  if (!file) return;
+  const transfer = new DataTransfer();
+  transfer.items.add(file);
+  fileInput.files = transfer.files;
+  describeFile(file);
 }
 
 function renderWarnings(warnings) {
@@ -73,15 +119,35 @@ async function checkHealth() {
   }
 }
 
-fileInput.addEventListener("change", () => {
-  const file = fileInput.files[0];
-  fileLabel.textContent = file ? file.name : "Choose long-form footage";
-  drawTimeline(file ? file.size % 37 : 2);
+fileInput.addEventListener("change", () => describeFile(fileInput.files[0]));
+
+["dragenter", "dragover"].forEach((eventName) => {
+  dropZone.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    dropZone.classList.add("is-dragging");
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+  });
+});
+
+["dragleave", "drop"].forEach((eventName) => {
+  dropZone.addEventListener(eventName, (event) => {
+    event.preventDefault();
+    dropZone.classList.remove("is-dragging");
+  });
+});
+
+dropZone.addEventListener("drop", (event) => {
+  acceptDroppedFile(event.dataTransfer?.files?.[0]);
 });
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
-  if (!fileInput.files.length) return;
+  if (!fileInput.files.length) {
+    showError("Choose a video, audio file, or transcript before finding highlights.");
+    fileInput.focus();
+    return;
+  }
+  showError();
   setLoading(true);
   const formData = new FormData();
   formData.append("file", fileInput.files[0]);
@@ -98,9 +164,16 @@ form.addEventListener("submit", async (event) => {
     document.querySelector("#edlLink").href = result.edit_decision_list_url;
     renderWarnings(result.warnings || []);
     renderClips(result.clips || []);
-    document.querySelector("#result").classList.remove("hidden");
+    resultPanel.classList.remove("hidden");
+    resultPanel.focus({ preventScroll: true });
+    resultPanel.scrollIntoView({
+      behavior: prefersReducedMotion ? "auto" : "smooth",
+      block: "start",
+    });
+    analysisStatus.textContent = `${result.clips?.length || 0} highlights are ready in the edit pack below.`;
   } catch (error) {
-    alert(`Unable to make highlights: ${error.message}`);
+    showError(`Unable to make highlights: ${error.message}`);
+    analysisStatus.textContent = "The edit pack was not created. Review the message and try again.";
   } finally {
     setLoading(false);
   }

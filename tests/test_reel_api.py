@@ -85,3 +85,24 @@ def test_reel_upload_handles_video_without_audio(tmp_path, monkeypatch):
     assert payload["clips"][0]["video_url"]
     assert not any("FFmpeg preprocessing failed" in warning for warning in payload["warnings"])
     assert payload["transcript"]["provider"] == "visual-only"
+
+
+def test_editor_exposes_accessible_upload_feedback():
+    client = TestClient(app)
+
+    page = client.get("/")
+    script = client.get("/static/app.js")
+    styles = client.get("/static/styles.css")
+
+    assert page.status_code == 200
+    assert 'id="fileMeta" aria-live="polite"' in page.text
+    assert 'id="analysisStatus" role="status" aria-live="polite"' in page.text
+    assert 'id="formError" role="alert"' in page.text
+    assert 'id="result" class="result hidden" tabindex="-1"' in page.text
+    file_input = page.text.split('id="file"', maxsplit=1)[1].split(">", maxsplit=1)[0]
+    assert "required" not in file_input
+    assert 'dropZone.addEventListener("drop"' in script.text
+    assert "resultPanel.scrollIntoView" in script.text
+    assert 'window.matchMedia?.("(prefers-reduced-motion: reduce)")' in script.text
+    assert 'behavior: prefersReducedMotion ? "auto" : "smooth"' in script.text
+    assert ".drop.is-dragging" in styles.text
