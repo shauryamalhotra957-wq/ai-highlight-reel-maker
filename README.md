@@ -41,6 +41,22 @@ OPENAI_API_KEY=sk-...
 OPENAI_TRANSCRIBE_MODEL=whisper-1
 ```
 
+## Media Process Limits
+
+FFmpeg probes and processing are bounded so a stalled media command cannot run
+forever. Override the defaults in `.env` when unusually large inputs need more
+time:
+
+```text
+AI_MEDIA_FFPROBE_TIMEOUT_SECONDS=30
+AI_MEDIA_FFMPEG_TIMEOUT_SECONDS=600
+AI_MEDIA_FFMPEG_TERMINATION_GRACE_SECONDS=2
+```
+
+Timeouts and launch failures are reported through the existing reel warnings.
+FFmpeg output is promoted atomically only after a successful command, and
+temporary extracted audio and OpenAI chunk files are removed after use.
+
 ## Features
 
 - Video/audio/transcript upload

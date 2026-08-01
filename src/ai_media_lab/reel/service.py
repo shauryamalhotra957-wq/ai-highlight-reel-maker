@@ -6,7 +6,12 @@ from pathlib import Path
 from fastapi import UploadFile
 
 from ai_media_lab.common.config import service_path
-from ai_media_lab.common.ffmpeg_service import FFmpegError, FFmpegRunner, write_srt
+from ai_media_lab.common.ffmpeg_service import (
+    FFmpegCancelledError,
+    FFmpegError,
+    FFmpegRunner,
+    write_srt,
+)
 from ai_media_lab.common.files import new_job_id, save_upload, write_json
 from ai_media_lab.common.openai_service import TEXT_EXTENSIONS, transcribe_media
 from ai_media_lab.common.schemas import HighlightClip, ReelJobResult, TranscriptResult, TranscriptSegment
@@ -250,6 +255,7 @@ async def process_reel_upload(
     duration: float | None = None
     scene_changes: list[float] = []
     media_for_transcript = job_source
+    temporary_audio_path: Path | None = None
     has_audio = True
     suffix = job_source.suffix.lower()
 
@@ -259,19 +265,39 @@ async def process_reel_upload(
             scene_changes = runner.detect_scene_changes(job_source)
             has_audio = runner.has_audio_stream(job_source)
             if has_audio:
-                media_for_transcript = runner.extract_audio(job_source, job_dir / "audio.wav")
+                temporary_audio_path = runner.extract_audio(
+                    job_source,
+                    job_dir / "audio.wav",
+                )
+                media_for_transcript = temporary_audio_path
             else:
                 media_for_transcript = None
+        except FFmpegCancelledError:
+            raise
         except (FFmpegError, TimeoutError) as error:
             warnings.append(f"FFmpeg preprocessing failed: {error}")
             media_for_transcript = job_source
     elif suffix in VIDEO_EXTENSIONS:
         warnings.append("FFmpeg is unavailable; returning an edit decision list without rendered MP4 clips.")
 
-    if media_for_transcript is None:
-        transcript = build_visual_only_transcript(upload.filename or job_source.name, duration, scene_changes)
-    else:
-        transcript = transcribe_media(media_for_transcript, kind="reel", prefer_segments=True, force_demo=demo_mode)
+    try:
+        if media_for_transcript is None:
+            transcript = build_visual_only_transcript(
+                upload.filename or job_source.name,
+                duration,
+                scene_changes,
+            )
+        else:
+            transcript = transcribe_media(
+                media_for_transcript,
+                kind="reel",
+                prefer_segments=True,
+                force_demo=demo_mode,
+                ffmpeg_runner=runner,
+            )
+    finally:
+        if temporary_audio_path is not None:
+            temporary_audio_path.unlink(missing_ok=True)
     if duration is None and transcript.segments:
         duration = max(segment.end for segment in transcript.segments if not math.isnan(segment.end))
 
@@ -300,6 +326,8 @@ async def process_reel_upload(
                 clip_path = job_dir / f"{clip.clip_id}.mp4"
                 runner.cut_clip(job_source, clip.start, clip.duration, clip_path)
                 clip.video_url = f"/api/jobs/{job_id}/files/{clip_path.name}"
+            except FFmpegCancelledError:
+                raise
             except (FFmpegError, TimeoutError) as error:
                 warnings.append(f"Could not render {clip.clip_id}: {error}")
 
