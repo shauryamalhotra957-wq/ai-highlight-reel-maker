@@ -1,13 +1,20 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from tempfile import TemporaryDirectory
+from typing import TYPE_CHECKING, Any
 
 from ai_media_lab.common.config import get_settings
 from ai_media_lab.common.files import read_text
 from ai_media_lab.common.schemas import TranscriptResult, TranscriptSegment
 from ai_media_lab.common.text_analysis import clean_transcript, segment_text
+
+
+if TYPE_CHECKING:
+    from ai_media_lab.common.ffmpeg_service import FFmpegRunner
 
 
 TEXT_EXTENSIONS = {".txt", ".md", ".srt", ".vtt"}
@@ -68,57 +75,76 @@ def _shift_segments(segments: list[TranscriptSegment], offset: float) -> list[Tr
     ]
 
 
-def _chunk_audio_if_needed(path: Path) -> list[Path]:
+@contextmanager
+def _audio_chunks(
+    path: Path,
+    runner: FFmpegRunner | None = None,
+) -> Iterator[list[Path]]:
     if path.stat().st_size <= OPENAI_UPLOAD_LIMIT_BYTES:
-        return [path]
+        yield [path]
+        return
 
     from ai_media_lab.common.ffmpeg_service import FFmpegRunner
 
-    runner = FFmpegRunner()
+    runner = runner or FFmpegRunner()
     if not runner.available():
-        return [path]
+        yield [path]
+        return
 
-    chunk_dir = path.parent / f"{path.stem}-openai-chunks"
-    chunk_dir.mkdir(parents=True, exist_ok=True)
-    target_pattern = chunk_dir / "chunk-%03d.mp3"
-    runner.run(
-        [
-            "-hide_banner",
-            "-y",
-            "-i",
-            str(path),
-            "-vn",
-            "-ac",
-            "1",
-            "-ar",
-            "16000",
-            "-b:a",
-            "32k",
-            "-f",
-            "segment",
-            "-segment_time",
-            "600",
-            "-reset_timestamps",
-            "1",
-            str(target_pattern),
-        ],
-        timeout=600,
-    )
-    chunks = sorted(chunk_dir.glob("chunk-*.mp3"))
-    return chunks or [path]
+    with TemporaryDirectory(
+        prefix=f".{path.stem}-openai-chunks-",
+        dir=path.parent,
+    ) as temporary_directory:
+        chunk_dir = Path(temporary_directory)
+        target_pattern = chunk_dir / "chunk-%03d.mp3"
+        runner.run(
+            [
+                "-hide_banner",
+                "-y",
+                "-i",
+                str(path),
+                "-vn",
+                "-ac",
+                "1",
+                "-ar",
+                "16000",
+                "-b:a",
+                "32k",
+                "-f",
+                "segment",
+                "-segment_time",
+                "600",
+                "-reset_timestamps",
+                "1",
+                str(target_pattern),
+            ],
+        )
+        chunks = sorted(chunk_dir.glob("chunk-*.mp3"))
+        yield chunks or [path]
 
 
-def _probe_duration(path: Path) -> float:
+def _probe_duration(path: Path, runner: FFmpegRunner | None = None) -> float:
     try:
-        from ai_media_lab.common.ffmpeg_service import FFmpegRunner
+        from ai_media_lab.common.ffmpeg_service import (
+            FFmpegCancelledError,
+            FFmpegRunner,
+        )
 
-        duration = FFmpegRunner().probe_duration(path)
+        duration = (runner or FFmpegRunner()).probe_duration(path)
         return float(duration or 0.0)
+    except FFmpegCancelledError:
+        raise
     except Exception:
         return 0.0
 
 
-def transcribe_media(path: Path, kind: str, prefer_segments: bool = False, force_demo: bool = False) -> TranscriptResult:
+def transcribe_media(
+    path: Path,
+    kind: str,
+    prefer_segments: bool = False,
+    force_demo: bool = False,
+    ffmpeg_runner: FFmpegRunner | None = None,
+) -> TranscriptResult:
     settings = get_settings()
     suffix = path.suffix.lower()
     if suffix in TEXT_EXTENSIONS:
@@ -146,22 +172,28 @@ def transcribe_media(path: Path, kind: str, prefer_segments: bool = False, force
     all_text: list[str] = []
     all_segments: list[TranscriptSegment] = []
     cursor = 0.0
-    for chunk in _chunk_audio_if_needed(path):
-        with chunk.open("rb") as audio_file:
-            request: dict[str, Any] = {"model": model, "file": audio_file}
-            if model == "whisper-1" and prefer_segments:
-                request["response_format"] = "verbose_json"
-                request["timestamp_granularities"] = ["segment"]
-            if model == "whisper-1" and all_text:
-                request["prompt"] = " ".join(" ".join(all_text).split()[-80:])
-            response = client.audio.transcriptions.create(**request)
+    with _audio_chunks(path, runner=ffmpeg_runner) as chunks:
+        for chunk in chunks:
+            with chunk.open("rb") as audio_file:
+                request: dict[str, Any] = {"model": model, "file": audio_file}
+                if model == "whisper-1" and prefer_segments:
+                    request["response_format"] = "verbose_json"
+                    request["timestamp_granularities"] = ["segment"]
+                if model == "whisper-1" and all_text:
+                    request["prompt"] = " ".join(
+                        " ".join(all_text).split()[-80:]
+                    )
+                response = client.audio.transcriptions.create(**request)
 
-        payload = _coerce_openai_response(response)
-        chunk_text = clean_transcript(str(payload.get("text") or ""))
-        chunk_segments = _segments_from_payload(payload, chunk_text)
-        all_text.append(chunk_text)
-        all_segments.extend(_shift_segments(chunk_segments, cursor))
-        cursor += _probe_duration(chunk) or max((segment.end for segment in chunk_segments), default=0.0)
+            payload = _coerce_openai_response(response)
+            chunk_text = clean_transcript(str(payload.get("text") or ""))
+            chunk_segments = _segments_from_payload(payload, chunk_text)
+            all_text.append(chunk_text)
+            all_segments.extend(_shift_segments(chunk_segments, cursor))
+            cursor += _probe_duration(chunk, runner=ffmpeg_runner) or max(
+                (segment.end for segment in chunk_segments),
+                default=0.0,
+            )
 
     text = clean_transcript(" ".join(all_text))
     return TranscriptResult(
