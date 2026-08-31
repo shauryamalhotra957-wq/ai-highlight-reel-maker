@@ -99,3 +99,21 @@ def test_reel_upload_rejects_oversized_file(tmp_path, monkeypatch):
     )
 
     assert response.status_code == 413
+
+def test_reel_clip_count_and_platform_are_bounded(tmp_path, monkeypatch):
+    monkeypatch.setenv("AI_MEDIA_DATA_DIR", str(tmp_path))
+    client = TestClient(app)
+
+    too_many = client.post(
+        "/api/highlights",
+        files={"file": ("show.txt", b"content", "text/plain")},
+        data={"clip_count": "13", "platform": "YouTube Shorts"},
+    )
+    too_long = client.post(
+        "/api/highlights",
+        files={"file": ("show.txt", b"content", "text/plain")},
+        data={"clip_count": "1", "platform": "x" * 81},
+    )
+
+    assert too_many.status_code == 422
+    assert too_long.status_code == 422
