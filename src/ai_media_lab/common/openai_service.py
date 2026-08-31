@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +43,14 @@ def _coerce_openai_response(payload: Any) -> dict[str, Any]:
     return {"text": str(payload)}
 
 
+def _safe_timestamp(value: Any) -> float:
+    try:
+        timestamp = float(value)
+    except (TypeError, ValueError):
+        return 0.0
+    return timestamp if math.isfinite(timestamp) else 0.0
+
+
 def _segments_from_payload(payload: dict[str, Any], text: str) -> list[TranscriptSegment]:
     raw_segments = payload.get("segments") or []
     segments: list[TranscriptSegment] = []
@@ -51,10 +60,14 @@ def _segments_from_payload(payload: dict[str, Any], text: str) -> list[Transcrip
         segment_text_value = clean_transcript(str(item.get("text") or ""))
         if not segment_text_value:
             continue
+        start = _safe_timestamp(item.get("start"))
+        end = _safe_timestamp(item.get("end"))
+        if end <= start:
+            continue
         segments.append(
             TranscriptSegment(
-                start=float(item.get("start") or 0.0),
-                end=float(item.get("end") or 0.0),
+                start=start,
+                end=end,
                 text=segment_text_value,
             )
         )
