@@ -5,6 +5,13 @@ import re
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
+
+
+MAX_UPLOAD_BYTES = 500 * 1024 * 1024
+
+
+class UploadTooLargeError(ValueError):
+    pass
 from uuid import uuid4
 
 from fastapi import UploadFile
@@ -28,13 +35,24 @@ async def save_upload(upload: UploadFile, destination_dir: Path) -> Path:
     destination_dir.mkdir(parents=True, exist_ok=True)
     filename = safe_filename(upload.filename)
     path = destination_dir / f"{uuid4().hex}-{filename}"
-    with path.open("wb") as output:
-        while True:
-            chunk = await upload.read(1024 * 1024)
-            if not chunk:
-                break
-            output.write(chunk)
-    await upload.seek(0)
+    total_bytes = 0
+    try:
+        with path.open("wb") as output:
+            while True:
+                chunk = await upload.read(1024 * 1024)
+                if not chunk:
+                    break
+                total_bytes += len(chunk)
+                if total_bytes > MAX_UPLOAD_BYTES:
+                    raise UploadTooLargeError(
+                        f"Upload exceeds the {MAX_UPLOAD_BYTES // (1024 * 1024)} MiB limit"
+                    )
+                output.write(chunk)
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
+    finally:
+        await upload.seek(0)
     return path
 
 
