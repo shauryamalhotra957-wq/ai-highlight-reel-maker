@@ -35,8 +35,8 @@ def health() -> dict[str, str]:
 @app.post("/api/highlights")
 async def highlights(
     file: Annotated[UploadFile, File(...)],
-    clip_count: Annotated[int, Form()] = 5,
-    platform: Annotated[str, Form()] = "YouTube Shorts",
+    clip_count: Annotated[int, Form(ge=1, le=12)] = 5,
+    platform: Annotated[str, Form(max_length=80)] = "YouTube Shorts",
     captions: Annotated[bool, Form()] = True,
     demo_mode: Annotated[bool, Form()] = False,
 ):
