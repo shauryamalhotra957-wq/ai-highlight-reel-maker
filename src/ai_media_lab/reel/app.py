@@ -5,6 +5,8 @@ from typing import Annotated
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+
+from ai_media_lab.common.files import UploadTooLargeError
 from fastapi.staticfiles import StaticFiles
 
 from ai_media_lab.reel.service import job_file, process_reel_upload
@@ -38,13 +40,16 @@ async def highlights(
     captions: Annotated[bool, Form()] = True,
     demo_mode: Annotated[bool, Form()] = False,
 ):
-    return await process_reel_upload(
-        upload=file,
-        clip_count=clip_count,
-        platform=platform,
-        captions=captions,
-        demo_mode=demo_mode,
-    )
+    try:
+        return await process_reel_upload(
+            upload=file,
+            clip_count=clip_count,
+            platform=platform,
+            captions=captions,
+            demo_mode=demo_mode,
+        )
+    except UploadTooLargeError as exc:
+        raise HTTPException(status_code=413, detail=str(exc)) from exc
 
 
 @app.get("/api/jobs/{job_id}/files/{filename}")
