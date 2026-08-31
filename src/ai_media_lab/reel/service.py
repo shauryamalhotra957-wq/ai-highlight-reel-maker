@@ -99,6 +99,17 @@ def _score_segment(segment: TranscriptSegment, scene_changes: list[float]) -> tu
     return score, ", ".join(reason_parts) or "clear standalone idea"
 
 
+def _finite_segment_duration(segments: list[TranscriptSegment]) -> float | None:
+    ends = [
+        segment.end
+        for segment in segments
+        if math.isfinite(segment.start)
+        and math.isfinite(segment.end)
+        and segment.end > segment.start
+    ]
+    return max(ends) if ends else None
+
+
 def _fallback_segments(transcript: TranscriptResult) -> list[TranscriptSegment]:
     if transcript.segments:
         return transcript.segments
@@ -272,8 +283,8 @@ async def process_reel_upload(
         transcript = build_visual_only_transcript(upload.filename or job_source.name, duration, scene_changes)
     else:
         transcript = transcribe_media(media_for_transcript, kind="reel", prefer_segments=True, force_demo=demo_mode)
-    if duration is None and transcript.segments:
-        duration = max(segment.end for segment in transcript.segments if not math.isnan(segment.end))
+    if duration is None:
+        duration = _finite_segment_duration(transcript.segments)
 
     clips = select_highlights(
         transcript=transcript,
