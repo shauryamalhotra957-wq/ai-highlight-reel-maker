@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from ai_media_lab.common import files as file_utils
 from ai_media_lab.common.ffmpeg_service import FFmpegRunner
 from ai_media_lab.reel.app import app
 
@@ -85,3 +86,16 @@ def test_reel_upload_handles_video_without_audio(tmp_path, monkeypatch):
     assert payload["clips"][0]["video_url"]
     assert not any("FFmpeg preprocessing failed" in warning for warning in payload["warnings"])
     assert payload["transcript"]["provider"] == "visual-only"
+ 
+
+def test_reel_upload_rejects_oversized_file(tmp_path, monkeypatch):
+    monkeypatch.setattr(file_utils, "MAX_UPLOAD_BYTES", 4)
+    monkeypatch.setenv("AI_MEDIA_DATA_DIR", str(tmp_path))
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/highlights",
+        files={"file": ("show.txt", b"too large", "text/plain")},
+    )
+
+    assert response.status_code == 413
