@@ -1,5 +1,7 @@
+import math
+
 from ai_media_lab.common.schemas import TranscriptResult, TranscriptSegment
-from ai_media_lab.reel.service import select_highlights
+from ai_media_lab.reel.service import _finite_segment_duration, select_highlights
 
 
 def test_select_highlights_scores_energy_and_outputs_captions():
@@ -20,3 +22,21 @@ def test_select_highlights_scores_energy_and_outputs_captions():
     assert clips[0].hashtags
     assert clips[0].score >= clips[-1].score
 
+
+def test_finite_segment_duration_ignores_invalid_timestamps():
+    segments = [
+        TranscriptSegment(start=0, end=math.nan, text="unknown"),
+        TranscriptSegment(start=math.inf, end=math.inf, text="invalid"),
+        TranscriptSegment(start=1, end=4, text="valid"),
+    ]
+
+    assert _finite_segment_duration(segments) == 4
+
+
+def test_finite_segment_duration_returns_none_without_valid_segments():
+    segments = [
+        TranscriptSegment(start=math.nan, end=math.nan, text="unknown"),
+        TranscriptSegment(start=4, end=2, text="reversed"),
+    ]
+
+    assert _finite_segment_duration(segments) is None
