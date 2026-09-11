@@ -43,12 +43,14 @@ def _coerce_openai_response(payload: Any) -> dict[str, Any]:
     return {"text": str(payload)}
 
 
-def _safe_timestamp(value: Any) -> float:
+def _safe_timestamp(value: Any) -> float | None:
+    if value is None:
+        return None
     try:
         timestamp = float(value)
     except (TypeError, ValueError):
-        return 0.0
-    return timestamp if math.isfinite(timestamp) else 0.0
+        return None
+    return timestamp if math.isfinite(timestamp) else None
 
 
 def _segments_from_payload(payload: dict[str, Any], text: str) -> list[TranscriptSegment]:
@@ -62,6 +64,8 @@ def _segments_from_payload(payload: dict[str, Any], text: str) -> list[Transcrip
             continue
         start = _safe_timestamp(item.get("start"))
         end = _safe_timestamp(item.get("end"))
+        if start is None or end is None:
+            continue
         if end <= start:
             continue
         segments.append(
