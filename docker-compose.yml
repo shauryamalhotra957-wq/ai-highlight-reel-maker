@@ -1,0 +1,9 @@
+version: '3.8'
+services:
+  ai-highlight-reel-maker:
+    build: .
+    volumes:
+      - .:/app
+    environment:
+      - ENV=production
+    command: python scripts/benchmark_clip_pipeline.py
